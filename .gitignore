@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# CDK
+cdk.out/
+infrastructure/cdk.out/
+.cdk.staging/
+
+# AWS / secrets
+.env
+*.pem
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local tooling / secrets - never commit
+.claude/
+*accessKeys*.csv
+
