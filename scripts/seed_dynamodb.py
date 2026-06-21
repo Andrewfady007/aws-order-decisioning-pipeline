@@ -3,7 +3,9 @@ Upload data/orders.csv into the DynamoDB "orders" table.
 
 Writes in batches of 25 (the DynamoDB batch_write_item limit), throttled to
 roughly 5 writes/second so we stay within the table's provisioned 5 WCU
-(matching the Free Tier-sized capacity set up in the CDK stack). Any items
+(matching the Free Tier-sized capacity set up in the CDK stack). For large
+bulk loads, temporarily bump the table's write capacity and pass a higher
+WRITES_PER_SECOND value to avoid a multi-hour run. Any items
 that DynamoDB returns as unprocessed (e.g. due to throttling) are retried
 once after the batch completes.
 """
@@ -19,7 +21,7 @@ import boto3
 TABLE_NAME = "orders"
 CSV_PATH = Path(__file__).resolve().parent.parent / "data" / "orders.csv"
 BATCH_SIZE = 25
-WRITES_PER_SECOND = 5
+WRITES_PER_SECOND = 5  # matches orders table's steady-state provisioned 5 WCU
 PROGRESS_INTERVAL = 1000
 
 NUMERIC_FIELDS = {"customer_tenure_days", "basket_value", "sku_count", "fraud_score"}
@@ -108,6 +110,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Only upload the first N orders (useful for a quick test run).",
     )
+    parser.add_argument(
+        "--skip",
+        type=int,
+        default=0,
+        help="Skip the first N orders (useful for resuming an interrupted run).",
+    )
     return parser.parse_args()
 
 
@@ -116,6 +124,9 @@ def main() -> None:
 
     print(f"Reading orders from {CSV_PATH}...")
     orders = read_orders(CSV_PATH)
+    if args.skip:
+        orders = orders[args.skip :]
+        print(f"Skipping first {args.skip:,} orders (resume mode).")
     if args.limit is not None:
         orders = orders[: args.limit]
 
